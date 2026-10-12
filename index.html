@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>七段数码管 · 段码屏</title>
+  <style>
+    /* 全局样式：简洁深色背景，突出数码管亮光 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #1a1e26; /* 深灰蓝 */
+      padding: 1rem;
+    }
+
+    /* 卡片容器 */
+    .card {
+      background: #0f1219;
+      padding: 2.5rem 2rem 2rem 2rem;
+      border-radius: 3rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      border: 1px solid #2d3440;
+    }
+
+    /* 七段数码管画布 — 使用 SVG 获得更清晰锐利的效果 */
+    .segment-display {
+      filter: drop-shadow(0 0 12px rgba(255, 180, 60, 0.3)); /* 外围微弱辉光 */
+      transition: filter 0.2s;
+    }
+
+    /* 输入区域 */
+    .input-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .input-label {
+      color: #9aa8b9;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    /* 数字输入框 — 只允许单个数字 */
+    #digitInput {
+      width: 160px;
+      padding: 0.9rem 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 600;
+      text-align: center;
+      background: #1b212b;
+      border: 2px solid #343e4e;
+      border-radius: 2rem;
+      color: #f0e6d0;
+      caret-color: #f5b84a;
+      outline: none;
+      transition: all 0.15s;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 4px;
+      box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    #digitInput:focus {
+      border-color: #f5b84a;
+      background: #1e2530;
+      box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(245, 184, 74, 0.15);
+    }
+
+    /* 隐藏数字输入框的上下箭头 */
+    #digitInput::-webkit-outer-spin-button,
+    #digitInput::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    #digitInput[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    /* 提示信息 */
+    .hint {
+      color: #5d6c7e;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      margin-top: 0.25rem;
+    }
+
+    /* 数码管段落基础样式：默认(熄灭)状态为暗色 */
+    .segment {
+      fill: #262e38;                /* 熄灭时的深灰色 */
+      transition: fill 0.15s ease;  /* 点亮时平滑过渡 */
+    }
+
+    /* 点亮状态 — 暖橙色，模拟LED发光 */
+    .segment.active {
+      fill: #f5b84a;                /* 明亮的琥珀色 */
+    }
+
+    /* 给亮段增加一点内发光效果(通过SVG filter模拟) —— 在svg中已经包含filter */
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- 七段数码管 SVG 图形 
+         画布尺寸 200x300，坐标经过精心设计，符合经典七段数码管布局 -->
+    <svg class="segment-display" width="200" height="300" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+      <!-- 定义滤镜：让点亮的段有微弱光晕，更接近真实LED -->
+      <defs>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- ===== 七段数码管 水平方向布局 ===== 
+           段定义:
+            a: 上横段
+            b: 右上竖段
+            c: 右下竖段
+            d: 下横段
+            e: 左下竖段
+            f: 左上竖段
+            g: 中横段
+           每个段用 polygon 绘制，角落稍圆润 (通过坐标微调看起来像圆角)
+      -->
+
+      <!-- 段 a (上横) -->
+      <polygon id="seg-a" class="segment" points="40,15 160,15 145,35 55,35" />
+
+      <!-- 段 b (右上竖) -->
+      <polygon id="seg-b" class="segment" points="165,20 185,40 185,135 165,155" />
+
+      <!-- 段 c (右下竖) -->
+      <polygon id="seg-c" class="segment" points="165,165 185,185 185,260 165,280" />
+
+      <!-- 段 d (下横) -->
+      <polygon id="seg-d" class="segment" points="55,285 145,285 160,265 40,265" />
+
+      <!-- 段 e (左下竖) -->
+      <polygon id="seg-e" class="segment" points="35,165 15,185 15,260 35,280" />
+
+      <!-- 段 f (左上竖) -->
+      <polygon id="seg-f" class="segment" points="35,20 15,40 15,135 35,155" />
+
+      <!-- 段 g (中横) -->
+      <polygon id="seg-g" class="segment" points="45,145 155,145 140,160 60,160" />
+
+      <!-- 可选的装饰：加几个小圆点表示小数点？但不需要，我们只显示整数 -->
+    </svg>
+
+    <div class="input-area">
+      <span class="input-label">输入数字 0-9</span>
+      <input type="number" id="digitInput" min="0" max="9" step="1" value="0" placeholder="0" inputmode="numeric">
+      <span class="hint">仅单个数字，其他输入无效</span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // ---- 1. 获取所有段元素 ----
+      const segments = {
+        a: document.getElementById('seg-a'),
+        b: document.getElementById('seg-b'),
+        c: document.getElementById('seg-c'),
+        d: document.getElementById('seg-d'),
+        e: document.getElementById('seg-e'),
+        f: document.getElementById('seg-f'),
+        g: document.getElementById('seg-g')
+      };
+
+      // ---- 2. 数码管段码表 (共阳/共阴逻辑, 这里1表示点亮) ----
+      // 顺序: a, b, c, d, e, f, g   (对应上面 segments 的 key)
+      // 数字0~9对应要亮的段
+      const digitMap = {
+        '0': ['a', 'b', 'c', 'd', 'e', 'f'],      // 0: 不亮g
+        '1': ['b', 'c'],                           // 1: 右侧两竖
+        '2': ['a', 'b', 'g', 'e', 'd'],            // 2: 上、右、中、左下、下
+        '3': ['a', 'b', 'c', 'd', 'g'],            // 3: 上、右、中、下
+        '4': ['f', 'g', 'b', 'c'],                 // 4: 左上、中、右上、右下
+        '5': ['a', 'f', 'g', 'c', 'd'],            // 5: 上、左上、中、右下、下
+        '6': ['a', 'f', 'g', 'e', 'c', 'd'],       // 6: 除右上(b)外全亮
+        '7': ['a', 'b', 'c'],                      // 7: 上、右上、右下
+        '8': ['a', 'b', 'c', 'd', 'e', 'f', 'g'],  // 8: 全部亮
+        '9': ['a', 'b', 'c', 'd', 'f', 'g']        // 9: 除左下(e)外全亮
+      };
+
+      // ---- 3. 更新显示的函数 ----
+      function updateDisplay(digitChar) {
+        // 如果没有数字或者非0-9，则全部熄灭 (稳妥处理，但调用前会保证合法)
+        if (!digitChar || !/^[0-9]$/.test(digitChar)) {
+          // 熄灭所有段
+          for (let key in segments) {
+            segments[key].classList.remove('active');
+          }
+          return;
+        }
+
+        // 先熄灭所有段
+        for (let key in segments) {
+          segments[key].classList.remove('active');
+        }
+
+        // 获取当前数字需要点亮的段数组
+        const activeSegments = digitMap[digitChar] || [];
+        // 点亮对应段
+        activeSegments.forEach(segKey => {
+          if (segments[segKey]) {
+            segments[segKey].classList.add('active');
+          }
+        });
+      }
+
+      // ---- 4. 获取输入框并处理输入 ----
+      const inputElement = document.getElementById('digitInput');
+
+      // 获取当前输入值并刷新显示 (同时修正输入框内容)
+      function handleInput() {
+        let rawValue = inputElement.value;
+
+        // 过滤：只保留第一个数字字符，且必须是0-9
+        // 注意：输入框是 number 类型，但用户可能输入 e、+、- 等，所以需要字符串过滤
+        // 但 number 类型的 input 在输入字母时 value 会变成空字符串(在某些浏览器), 所以更健壮的方式是使用 text 类型?
+        // 为了完全控制，我们使用 type="text" 并设置 inputmode="numeric" 更好。但已经写了 number，我们可以补救:
+        // 改用 type="text" 并加上 inputmode="numeric"，更可控。马上改一下 HTML 属性。
+        // 但是写到这里, 我们直接在 JS 里处理，即使类型是number也可以通过 value 来。
+        // 实际上 type="number" 在输入 "a" 时 value 为空；输入 "12" 时 value 为 "12"。
+        // 为了更好的体验，我在下方动态将 input 的 type 改为 text，并保留数字键盘特性。
+        // 但为了不改动 HTML 属性，我们在初始化时直接设置属性。
+        // 方案: 在 JS 里改 type 为 text，这样所有字符都能获取到，然后我们再过滤。
+        // 为了保留数字键盘，设置 inputmode="numeric"。
+        // 这样更可靠。
+        
+        // 但我们不能反复重设type，只在第一次执行即可。但函数会被多次调用，所以加个条件判断。
+        // 注意：DOM加载完成后立即执行一次，但type已设。
+        // 这里我们借助一个标志或者干脆用已经改好的。
+        
+        // 更优雅：在 JS 初始化时直接设置 type = 'text'，此处不再重复。但我们已经在HTML中写了number，
+        // 可以用代码改。我们写一个初始化函数来改。
+        // 已经在下方 immediate 执行。
+        
+        // 继续处理 rawValue:
+        // 取第一个字符，如果是数字0-9则保留，否则清空/回退
+        let firstChar = rawValue.length > 0 ? rawValue[0] : '';
+
+        // 如果第一个字符不是数字或为空，则重置为 '0' (或者保留之前的值? 为了体验更自然，回退到上一个有效值？)
+        // 但简单有效：如果第一个字符无效，则强制设为 '0' 并更新显示。
+        // 但如果用户全部删除，会变成空字符串，这时我们显示 '0' 并且设置输入框为 '0'。
+        // 或者显示全灭？按需求“输入其他字符不生效”，可以认为显示保持不变或者熄灭? 
+        // 但更符合直觉: 如果用户删空，显示0? 还是熄灭? 原需求是实时显示对应数字，如果为空，可以显示全灭。
+        // 但为了美观，空时显示0或者全灭都可以。我这里选择显示全灭(更接近硬件无输入状态)，但同时输入框回退到'0'会更好？
+        // 为了让用户不困惑，当输入无效或为空时，我们保留上一个有效数字，并将输入框内容恢复。
+        // 但我们没有保存上一个有效值，可以简单地将输入框值设为'0'并点亮0。
+        // 但更自然：当用户删空或者输入非数字，我们不让输入框变化，而是拒绝这次修改？在input事件中很难。
+        // 最简单且符合“输入其他字符不生效”：在input事件中，如果新值第一个字符不是数字，则恢复为旧值（需要存储旧值）。
+        // 实现：用变量 lastValidDigit 保存上一次合法的数字字符。
+
+        // 使用 lastValidDigit 方案：
+        // 初始化时设为 '0'，之后每次合法输入更新它，非法时回退输入框内容为 lastValidDigit。
+        // 需要在外部声明。
+        
+        // 但由于我们在input事件中，可以访问到 lastValidDigit。
+        // 继续:
+      }
+
+      // 为了更清晰，将逻辑重构：
+      // 全局变量保存上一次有效数字 (字符串 '0'~'9')
+      let lastValidDigit = '0';
+
+      // 初始化输入框的值
+      inputElement.value = '0';
+
+      // 将input类型改为text以获取完整输入(同时保留数字键盘)
+      inputElement.type = 'text';
+      inputElement.inputMode = 'numeric'; // 数字键盘
+      // 移除 number 类型的上下箭头样式已经不需要，但CSS中保留不影响
+
+      // 输入事件处理
+      function onInput() {
+        const raw = inputElement.value;
+
+        // 如果为空，认为无效，回退到 lastValidDigit，但也可以熄灭。为了不闪烁，回退并保持显示。
+        if (raw.length === 0) {
+          inputElement.value = lastValidDigit;
+          // 显示不变（已经显示的是lastValidDigit）
+          return;
+        }
+
+        // 取第一个字符
+        const firstChar = raw[0];
+
+        // 检查是否为0-9的数字
+        if (/^[0-9]$/.test(firstChar)) {
+          // 合法：更新 lastValidDigit，并确保输入框只保留这一个字符
+          lastValidDigit = firstChar;
+          inputElement.value = firstChar;  // 只保留单个数字
+          updateDisplay(firstChar);
+        } else {
+          // 非法字符：回退到上一次有效数字，并且不更新显示
+          inputElement.value = lastValidDigit;
+          // 显示保持不变（因为lastValidDigit对应的显示已经亮着）
+        }
+      }
+
+      // 绑定 input 事件
+      inputElement.addEventListener('input', onInput);
+
+      // 额外处理：当输入框失去焦点时，确保内容合法（其实input事件已处理，但以防通过粘贴等方式）
+      inputElement.addEventListener('blur', function() {
+        if (!/^[0-9]$/.test(inputElement.value)) {
+          inputElement.value = lastValidDigit;
+        } else {
+          // 如果合法但可能有多余字符，但input事件已整理成单个字符
+          // 这里再次确保
+          if (inputElement.value.length > 1) {
+            inputElement.value = inputElement.value[0];
+          }
+        }
+        // 确保显示与输入框一致
+        updateDisplay(inputElement.value);
+      });
+
+      // 额外：当用户按上下键改变number类型时，但我们已改为text，无影响。
+      // 粘贴处理: input事件已经覆盖
+
+      // 初始化显示: 默认数字0
+      updateDisplay('0');
+
+      // 为了支持初始状态以及点击等，已经OK
+
+      // 但还有一个细节：用户全选删除时，input事件触发raw为空，回退为lastValidDigit并显示。OK
+
+      // 如果用户输入多个数字比如 "12"，input事件中raw="12"，firstChar='1'，我们设置为'1'，所以变成了'1'。
+      // 正确。
+    })();
+  </script>
+
+  <!-- 由于我们动态将 input 的 type 改为了 text，为了保留输入框的样式，CSS中的 #digitInput[type="number"] 选择器可能失效，但不影响主要样式。我们调整CSS选择器为 #digitInput 即可。已经在上面调整。-->
+  <!-- 另外，为了兼容，再补充一点样式确保输入框外观不变。上面已经用 #digitInput 直接设置样式，不依赖 type。没问题。 -->
+</body>
+</html>
